@@ -2,14 +2,14 @@
 #EOF token is used to indicate that there is no more input left for lexical
 #analysis
 
-INTEGER, OPERATOR, EOF = 'INTEGER', 'OPERATOR', 'EOF'
+INTEGER, PLUS, MINUS, EOF = 'INTEGER', 'PLUS', 'MINUS', 'EOF'
 
 class Token(object):
 
     def __init__(self, type, value):
-        #token type: INTEGER, PLUS, EOF
+        #token type: INTEGER, PLUS, MINUS, EOF
         self.type = type
-        #token valueL: 0~9, '+', or None
+        #token valueL: 0~9, '+', '-', or None
         self.value = value
 
     def __str__(self):
@@ -37,59 +37,64 @@ class Interpreter(object):
         self.pos = 0
         #current token instance
         self.current_token = None
+        self.current_char = self.text[self.pos]
 
     def error(self):
         raise Exception('Error paring input')
 
-    def escape_white_space(self):
-        text = self.text
-        text_len = len(text)
-        while self.pos < text_len and text[self.pos].isspace():
-            self.pos += 1
+    def advance(self):
+        '''
+            Advance the 'pos' pointer and set the 'current_char' variable.
+        '''
+        self.pos += 1
+        if self.pos > len(self.text) - 1:
+            self.current_char = None    #indicate end of input
+        else:
+            self.current_char = self.text[self.pos]
 
-    def get_digits(self):
-        digits = ''
-        text = self.text
-        text_len = len(text)
-        while self.pos < text_len and text[self.pos].isdigit():
-            digits += text[self.pos]
-            self.pos += 1
-        return digits
+    def skip_whitespace(self):
+        while self.current_char is not None and self.current_char.isspace():
+            self.advance()
+
+    def integer(self):
+        '''
+            Return a multidigit integer consumed from the input
+        '''
+        result = ''
+        while self.current_char is not None and self.current_char.isdigit():
+            result += self.current_char
+            self.advance()
+
+        return int(result)
 
     def get_next_token(self):
         """
             Lexical analyzer (aka scanner or tokenizer)
             This method is responsible for breaking a sentence apart into 
             tokens. One token at a time.
+
+            Once entered, 'self.pos' points to the char to be processed. 
         """
-        text = self.text
 
-        self.escape_white_space()
+        while self.current_char is not None:
+            if self.current_char.isspace():
+                self.skip_whitespace()
+                continue
 
-        #Check if self.pos index past the end of the self.text.
-        #If so, return EOF token because there is no more input left to convert
-        #into tokens
-        if self.pos > len(text) -1:
-            return Token(EOF, None)
+            if self.current_char.isdigit():
+                return Token(INTEGER, self.integer())
 
-        #Get a character at the position self.pos and decide what token to 
-        #create based on the single char.
-        current_char = text[self.pos]
+            if self.current_char == '+':
+                self.advance()
+                return Token(PLUS, '+')
 
-        #If the char is a digit, convert it to integer, create an INTEGER token,
-        #increment self.pos index to point to the next char after the digit,
-        #and return the INTEGER token.
-        if current_char.isdigit():
-            digits = self.get_digits()
-            token = Token(INTEGER, int(digits))
-            return token
+            if self.current_char == '-':
+                self.advance()
+                return Token(MINUS, '-')
 
-        if current_char in ['+', '-', '*', '/']:
-            token = Token(OPERATOR, current_char)
-            self.pos += 1
-            return token
+            self.error()
 
-        self.error()
+        return Token(EOF, None)
 
     def eat(self, token_type):
         #Compare the current token type with the passed (expected) 
@@ -102,7 +107,10 @@ class Interpreter(object):
             self.error()
 
     def expr(self):
-        '''expr -> INTEGET PLUS INTEGER'''
+        '''
+            expr -> INTEGET PLUS INTEGER
+            expr -> INTEGET MINUS INTEGER
+        '''
         #Set current token to the first token taken from the input.
         self.current_token = self.get_next_token()
 
@@ -110,34 +118,28 @@ class Interpreter(object):
         left = self.current_token
         self.eat(INTEGER)
 
-        result = left.value
+        #Expect the current token to be an operator token.
+        op = self.current_token
+        if op.type == PLUS:
+            self.eat(PLUS)
+        else:
+            self.eat(MINUS)
 
-        while self.current_token.type != EOF:
-            #Expect the current token to be an operator token.
-            op = self.current_token
-            self.eat(OPERATOR)
+        #Expect the current token to be a single-digit integer.
+        right = self.current_token
+        self.eat(INTEGER)
 
-            #Expect the current token to be a single-digit integer.
-            right = self.current_token
-            self.eat(INTEGER)
-
-            #At this point, self.current_token is set to EOF token.
-            #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
-            #found and the method can just return the result of adding two 
-            #integers, thus effectively interpreting client input.
-            if op.value == '+':
-                result += right.value
-            elif op.value == '-':
-                result -= right.value
-            elif op.value == '*':
-                result *= right.value
-            elif op.value == '/':
-                result /= right.value
-
+        #At this point, self.current_token is set to EOF token.
+        #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
+        #found and the method can just return the result of adding two 
+        #integers, thus effectively interpreting client input.
+        if op.type == PLUS:
+            result = left.value + right.value
+        else:
+            result = left.value - right.value
         return result
 
             
-
 def main():
     while True:
         try:
