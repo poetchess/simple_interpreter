@@ -2,7 +2,7 @@
 #EOF token is used to indicate that there is no more input left for lexical
 #analysis
 
-INTEGER, PLUS, EOF = 'INTEGER', 'PLUS', 'EOF'
+INTEGER, OPERATOR, EOF = 'INTEGER', 'OPERATOR', 'EOF'
 
 class Token(object):
 
@@ -41,6 +41,21 @@ class Interpreter(object):
     def error(self):
         raise Exception('Error paring input')
 
+    def escape_white_space(self):
+        text = self.text
+        text_len = len(text)
+        while self.pos < text_len and text[self.pos].isspace():
+            self.pos += 1
+
+    def get_digits(self):
+        digits = ''
+        text = self.text
+        text_len = len(text)
+        while self.pos < text_len and text[self.pos].isdigit():
+            digits += text[self.pos]
+            self.pos += 1
+        return digits
+
     def get_next_token(self):
         """
             Lexical analyzer (aka scanner or tokenizer)
@@ -48,6 +63,8 @@ class Interpreter(object):
             tokens. One token at a time.
         """
         text = self.text
+
+        self.escape_white_space()
 
         #Check if self.pos index past the end of the self.text.
         #If so, return EOF token because there is no more input left to convert
@@ -63,12 +80,12 @@ class Interpreter(object):
         #increment self.pos index to point to the next char after the digit,
         #and return the INTEGER token.
         if current_char.isdigit():
-            token = Token(INTEGER, int(current_char))
-            self.pos += 1
+            digits = self.get_digits()
+            token = Token(INTEGER, int(digits))
             return token
 
-        if current_char == '+':
-            token = Token(PLUS, current_char)
+        if current_char == '+' or current_char == '-':
+            token = Token(OPERATOR, current_char)
             self.pos += 1
             return token
 
@@ -93,19 +110,22 @@ class Interpreter(object):
         left = self.current_token
         self.eat(INTEGER)
 
-        #Expect the current token to be a '+' token.
+        #Expect the current token to be an operator token.
         op = self.current_token
-        self.eat(PLUS)
+        self.eat(OPERATOR)
 
         #Expect the current token to be a single-digit integer.
         right = self.current_token
         self.eat(INTEGER)
 
         #At this point, self.current_token is set to EOF token.
-        #And INTEGER PLUE INTEGER sequence of tokens has been successfully 
+        #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
         #found and the method can just return the result of adding two 
         #integers, thus effectively interpreting client input.
-        result = left.value + right.value
+        if op.value == '+':
+            result = left.value + right.value
+        elif op.value == '-':
+            result = left.value - right.value
         return result
 
 def main():
