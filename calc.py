@@ -84,7 +84,7 @@ class Interpreter(object):
             token = Token(INTEGER, int(digits))
             return token
 
-        if current_char == '+' or current_char == '-':
+        if current_char in ['+', '-', '*', '/']:
             token = Token(OPERATOR, current_char)
             self.pos += 1
             return token
@@ -110,23 +110,33 @@ class Interpreter(object):
         left = self.current_token
         self.eat(INTEGER)
 
-        #Expect the current token to be an operator token.
-        op = self.current_token
-        self.eat(OPERATOR)
+        result = left.value
 
-        #Expect the current token to be a single-digit integer.
-        right = self.current_token
-        self.eat(INTEGER)
+        while self.current_token.type != EOF:
+            #Expect the current token to be an operator token.
+            op = self.current_token
+            self.eat(OPERATOR)
 
-        #At this point, self.current_token is set to EOF token.
-        #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
-        #found and the method can just return the result of adding two 
-        #integers, thus effectively interpreting client input.
-        if op.value == '+':
-            result = left.value + right.value
-        elif op.value == '-':
-            result = left.value - right.value
+            #Expect the current token to be a single-digit integer.
+            right = self.current_token
+            self.eat(INTEGER)
+
+            #At this point, self.current_token is set to EOF token.
+            #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
+            #found and the method can just return the result of adding two 
+            #integers, thus effectively interpreting client input.
+            if op.value == '+':
+                result += right.value
+            elif op.value == '-':
+                result -= right.value
+            elif op.value == '*':
+                result *= right.value
+            elif op.value == '/':
+                result /= right.value
+
         return result
+
+            
 
 def main():
     while True:
