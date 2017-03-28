@@ -39,8 +39,9 @@ class Interpreter(object):
         self.current_token = None
         self.current_char = self.text[self.pos]
 
+    #Lexer code
     def error(self):
-        raise Exception('Error paring input')
+        raise Exception('Invalid syntax')
 
     def advance(self):
         '''
@@ -96,6 +97,7 @@ class Interpreter(object):
 
         return Token(EOF, None)
 
+    #Parser / Interpreter code
     def eat(self, token_type):
         #Compare the current token type with the passed (expected) 
         #token type and if they match, 'eat' the current token and
@@ -106,39 +108,29 @@ class Interpreter(object):
         else:
             self.error()
 
+    def term(self):
+        '''
+            Return an INTEGER token value
+        '''
+        token = self.current_token
+        self.eat(INTEGER)
+        return token.value
+
     def expr(self):
-        '''
-            expr -> INTEGET PLUS INTEGER
-            expr -> INTEGET MINUS INTEGER
-        '''
         #Set current token to the first token taken from the input.
         self.current_token = self.get_next_token()
 
-        #Expect the current token to be a single-digit integer.
-        left = self.current_token
-        self.eat(INTEGER)
+        result = self.term()
+        while self.current_token.type in (PLUS, MINUS):
+            token = self.current_token
+            if token.type == PLUS:
+                self.eat(PLUS)
+                result += self.term()
+            elif token.type == MINUS:
+                self.eat(MINUS)
+                result -= self.term()
 
-        #Expect the current token to be an operator token.
-        op = self.current_token
-        if op.type == PLUS:
-            self.eat(PLUS)
-        else:
-            self.eat(MINUS)
-
-        #Expect the current token to be a single-digit integer.
-        right = self.current_token
-        self.eat(INTEGER)
-
-        #At this point, self.current_token is set to EOF token.
-        #And INTEGER OPERATOR INTEGER sequence of tokens has been successfully 
-        #found and the method can just return the result of adding two 
-        #integers, thus effectively interpreting client input.
-        if op.type == PLUS:
-            result = left.value + right.value
-        else:
-            result = left.value - right.value
         return result
-
             
 def main():
     while True:
