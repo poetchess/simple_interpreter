@@ -2,7 +2,7 @@
 #EOF token is used to indicate that there is no more input left for lexical
 #analysis
 
-INTEGER, MUL, DIV, EOF = 'INTEGER', 'MUL', 'DIV', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
 
 class Token(object):
 
@@ -83,6 +83,14 @@ class Lexer(object):
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
+            if self.current_char == '+':
+                self.advance()
+                return Token(PLUS, '+')
+
+            if self.current_char == '-':
+                self.advance()
+                return Token(MINUS, '-')
+
             if self.current_char == '*':
                 self.advance()
                 return Token(MUL, '*')
@@ -117,22 +125,19 @@ class Interpreter(object):
 
     def factor(self):
         '''
-            Return an INTEGER token value
+            Grammer rule:
             factor : INTEGER
         '''
         token = self.current_token
         self.eat(INTEGER)
         return token.value
 
-    def expr(self):
+    def term(self):
         '''
-            Arithmetic expression parser
-            Grammar:
-            expr : factor ((MUL | DIV) factor)*
-            factor : INTEGER
+            Grammar rule:
+            term : factor ((MUL | DIV) factor)*
         '''
-        result = self.factor()
-
+        result = self.factor() 
         while self.current_token.type in (MUL, DIV):
             token = self.current_token
             if token.type == MUL:
@@ -141,6 +146,27 @@ class Interpreter(object):
             elif token.type == DIV:
                 self.eat(DIV)
                 result /= self.factor()
+
+        return result
+
+    def expr(self):
+        '''
+            Arithmetic expression parser
+            Grammar:
+            expr    : term ((PLUS | MINUS) term)*
+            term    : factor ((MUL | DIV) factor)*
+            factor  : INTEGER
+        '''
+        result = self.term()
+
+        while self.current_token.type in (PLUS, MINUS):
+            token = self.current_token
+            if token.type == PLUS:
+                self.eat(PLUS)
+                result += self.term()
+            elif token.type == MINUS:
+                self.eat(MINUS)
+                result -= self.term()
 
         return result
 
@@ -157,8 +183,7 @@ def main():
 
         interpreter = Interpreter(Lexer(text))
         result = interpreter.expr()
-        print(result)
-
+        print result
 
 if __name__ == '__main__':
     main()
