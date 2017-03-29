@@ -2,12 +2,12 @@
 #EOF token is used to indicate that there is no more input left for lexical
 #analysis
 
-INTEGER, PLUS, MINUS, EOF = 'INTEGER', 'PLUS', 'MINUS', 'EOF'
+INTEGER, MUL, DIV, EOF = 'INTEGER', 'MUL', 'DIV', 'EOF'
 
 class Token(object):
 
     def __init__(self, type, value):
-        #token type: INTEGER, PLUS, MINUS, EOF
+        #token type: INTEGER, MUL, DIV, EOF
         self.type = type
         #token valueL: 0~9, '+', '-', or None
         self.value = value
@@ -17,7 +17,7 @@ class Token(object):
             String representation of the class instance.
             i.e.:
             Token(INTEGER, 3)
-            Token(PLUS, '+')
+            Token(MUL, '*')
         """
         return 'Token({type}, {value})'.format(
                 type=self.type,
@@ -28,15 +28,13 @@ class Token(object):
         return self.__str__()
 
 
-class Interpreter(object):
+class Lexer(object):
 
     def __init__(self, text):
         #client string input, e.g. "3+5"
         self.text = text
         #self.pos in an index into self.text
         self.pos = 0
-        #current token instance
-        self.current_token = None
         self.current_char = self.text[self.pos]
 
     #Lexer code
@@ -85,53 +83,68 @@ class Interpreter(object):
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
-            if self.current_char == '+':
+            if self.current_char == '*':
                 self.advance()
-                return Token(PLUS, '+')
+                return Token(MUL, '*')
 
-            if self.current_char == '-':
+            if self.current_char == '/':
                 self.advance()
-                return Token(MINUS, '-')
+                return Token(DIV, '/')
 
             self.error()
 
         return Token(EOF, None)
+    
 
-    #Parser / Interpreter code
+class Interpreter(object):
+
+    def __init__(self, lexer):
+        self.lexer = lexer
+        self.current_token = self.lexer.get_next_token()
+
+    def error(self):
+        raise Exception('Invalid syntax')
+
     def eat(self, token_type):
         #Compare the current token type with the passed (expected) 
         #token type and if they match, 'eat' the current token and
         #assign the next token to the self.current_token, otherwise
         #raise an exception.
         if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
+            self.current_token = self.lexer.get_next_token()
         else:
             self.error()
 
-    def term(self):
+    def factor(self):
         '''
             Return an INTEGER token value
+            factor : INTEGER
         '''
         token = self.current_token
         self.eat(INTEGER)
         return token.value
 
     def expr(self):
-        #Set current token to the first token taken from the input.
-        self.current_token = self.get_next_token()
+        '''
+            Arithmetic expression parser
+            Grammar:
+            expr : factor ((MUL | DIV) factor)*
+            factor : INTEGER
+        '''
+        result = self.factor()
 
-        result = self.term()
-        while self.current_token.type in (PLUS, MINUS):
+        while self.current_token.type in (MUL, DIV):
             token = self.current_token
-            if token.type == PLUS:
-                self.eat(PLUS)
-                result += self.term()
-            elif token.type == MINUS:
-                self.eat(MINUS)
-                result -= self.term()
+            if token.type == MUL:
+                self.eat(MUL)
+                result *= self.factor()
+            elif token.type == DIV:
+                self.eat(DIV)
+                result /= self.factor()
 
         return result
-            
+
+
 def main():
     while True:
         try:
@@ -142,9 +155,10 @@ def main():
         if not text:
             continue
 
-        interpreter = Interpreter(text)
+        interpreter = Interpreter(Lexer(text))
         result = interpreter.expr()
         print(result)
+
 
 if __name__ == '__main__':
     main()
