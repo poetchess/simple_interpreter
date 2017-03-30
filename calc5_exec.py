@@ -2,7 +2,7 @@
 #EOF token is used to indicate that there is no more input left for lexical
 #analysis
 
-INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'LPAREN', 'RPAREN', 'EOF'
 
 class Token(object):
 
@@ -39,7 +39,7 @@ class Lexer(object):
 
     #Lexer code
     def error(self):
-        raise Exception('Invalid syntax')
+        raise Exception('Invalid character')
 
     def advance(self):
         '''
@@ -99,6 +99,14 @@ class Lexer(object):
                 self.advance()
                 return Token(DIV, '/')
 
+            if self.current_char == '(':
+                self.advance()
+                return Token(LPAREN, '(')
+
+            if self.current_char == ')':
+                self.advance()
+                return Token(RPAREN, ')')
+
             self.error()
 
         return Token(EOF, None)
@@ -126,11 +134,17 @@ class Interpreter(object):
     def factor(self):
         '''
             Grammer rule:
-            factor : INTEGER
+            factor : INTEGER | LPAREN expr RPAREN
         '''
         token = self.current_token
-        self.eat(INTEGER)
-        return token.value
+        if token.type == INTEGER:
+            self.eat(INTEGER)
+            return token.value
+        else:
+            self.eat(LPAREN)
+            result = self.expr()
+            self.eat(RPAREN)
+            return result
 
     def term(self):
         '''
@@ -155,7 +169,7 @@ class Interpreter(object):
             Grammar:
             expr    : term ((PLUS | MINUS) term)*
             term    : factor ((MUL | DIV) factor)*
-            factor  : INTEGER
+            factor  : INTEGER | LPAREN expr RPAREN
         '''
         result = self.term()
 
