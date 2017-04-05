@@ -111,6 +111,11 @@ class Lexer(object):
 class AST(object):
     pass
 
+class UnaryOp(AST):
+    def __init__(self, op, operand):
+        self.token = self.op = op
+        self.operand = operand
+
 class BinOp(AST):
     def __init__(self, left, op, right):
         self.left = left
@@ -139,12 +144,18 @@ class Parser(object):
     def factor(self):
         '''
             Grammer rule:
-            factor : INTEGER | LPAREN expr RPAREN
+            factor : (PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN
         '''
         token = self.current_token
         if token.type == INTEGER:
             self.eat(INTEGER)
             return Num(token)
+        elif token.type == PLUS:
+            self.eat(PLUS)
+            return UnaryOp(op=token, operand=self.factor())
+        elif token.type == MINUS:
+            self.eat(MINUS)
+            return UnaryOp(op=token, operand=self.factor()) 
         else:
             self.eat(LPAREN)
             node = self.expr()
@@ -209,6 +220,12 @@ class NodeVisitor(object):
 class Interpreter(NodeVisitor):
     def __init__(self, parser):
         self.parser = parser
+
+    def visit_UnaryOp(self, node):
+        if node.op.type == PLUS:
+            return self.visit(node.operand)
+        else:
+            return -self.visit(node.operand)
 
     def visit_BinOp(self, node):
         if node.op.type == PLUS:
